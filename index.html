@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Plan: Geopolitics Visualization</title>
+    <!-- ライブラリ読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --danger: #f85149;
+            --resource: #d299ff;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            width: 100%;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
+        .sub { color: var(--text-dim); margin-top: 5px; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+        }
+
+        .viz-card { flex: 1 1 600px; min-width: 300px; }
+        .control-card { flex: 1 1 350px; min-width: 300px; }
+
+        #canvas-wrapper {
+            background: #05070a;
+            border-radius: 8px;
+            margin-top: 15px;
+            height: 450px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #node-info {
+            margin-top: 15px;
+            padding: 12px;
+            background: #0d1117;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: var(--accent);
+            min-height: 3em;
+        }
+
+        .slider-container { margin: 20px 0; }
+        input[type=range] { width: 100%; margin-top: 10px; cursor: pointer; }
+
+        .price-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .price-box #oil-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--resource);
+        }
+
+        .node-label { fill: #fff; font-size: 14px; font-weight: bold; pointer-events: none; text-anchor: middle; }
+        .link { stroke: #484f58; stroke-width: 2; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Geopolitical Risk Analysis</h1>
+        <p class="sub">UNIT1: 権力・力・資源による国際問題の可視化</p>
+    </header>
+
+    <main class="container">
+        <!-- 1. D3.js Network -->
+        <div class="card viz-card">
+            <h3>因果構造：権力・力・資源の動態</h3>
+            <div id="canvas-wrapper">
+                <svg id="viz-canvas" width="100%" height="100%"></svg>
+            </div>
+            <div id="node-info">ノードをドラッグ、またはホバーして詳細を確認</div>
+        </div>
+
+        <!-- 2. Simulation Control -->
+        <div class="card control-card">
+            <h3>Hormuz Simulation</h3>
+            <div class="slider-container">
+                <label for="risk-slider">地政学的緊張度: <span id="risk-display">10</span>%</label>
+                <input type="range" id="risk-slider" value="10" min="0" max="100">
+            </div>
+            
+            <div class="price-box">
+                <span>予測原油価格 (WTI):</span>
+                <span id="oil-price">$80.00</span>
+            </div>
+
+            <div class="chart-wrapper" style="height: 250px;">
+                <canvas id="impactChart"></canvas>
+            </div>
+
+            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 20px;">
+                Sources: EIA Data, Unit 1 Action Plan Research.
+            </p>
+        </div>
+    </main>
+
+    <script>
+        window.onload = function() {
+            // --- D3.js Logic ---
+            const nodes = [
+                { id: "権力 (Authority)", color: "#58a6ff", info: "アメリカによる国際秩序の支配と他国への政治的圧力。" },
+                { id: "力 (Force)", color: "#f85149", info: "イランによるホルムズ海峡封鎖などの物理的な軍事・防御力。" },
+                { id: "資源 (Resources)", color: "#d299ff", info: "石油・エネルギー。国家が「権力」と「力」を行使する根本理由。" }
+            ];
+
+            const links = [
+                { source: "権力 (Authority)", target: "資源 (Resources)" },
+                { source: "力 (Force)", target: "資源 (Resources)" },
+                { source: "権力 (Authority)", target: "力 (Force)" }
+            ];
+
+            const svg = d3.select("#viz-canvas");
+            const wrapper = document.getElementById('canvas-wrapper');
+            const width = wrapper.clientWidth;
+            const height = 450;
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("center", d3.forceCenter(width / 2, height / 2));
+
+            const link = svg.append("g")
+                .selectAll("line")
+                .data(links)
+                .enter().append("line")
+                .attr("class", "link");
+
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(nodes)
+                .enter().append("circle")
+                .attr("r", 40)
+                .attr("fill", d => d.color)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("mouseover", (e, d) => { document.getElementById('node-info').innerText = d.info; })
+                .on("mouseout", () => { document.getElementById('node-info').innerText = "ノードをドラッグ、またはホバーして詳細を確認"; });
+
+            const label = svg.append("g")
+                .selectAll("text")
+                .data(nodes)
+                .enter().append("text")
+                .attr("class", "node-label")
+                .text(d => d.id.split(' ')[0]);
+
+            simulation.on("tick", () => {
+                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                node.attr("cx", d => d.x).attr("cy", d => d.y);
+                label.attr("x", d => d.x).attr("y", d => d.y + 5);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }
+
+            // --- Chart.js Logic ---
+            const ctx = document.getElementById('impactChart').getContext('2d');
+            const impactChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['原油価格 ($)', 'リスク (%)', 'ガソリン指数'],
+                    datasets: [{
+                        data: [80, 10, 100],
+                        backgroundColor: ['#58a6ff', '#f85149', '#3fb950']
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, grid: { color: '#30363d' } } }
+                }
+            });
+
+            const slider = document.getElementById('risk-slider');
+            slider.addEventListener('input', (e) => {
+                const risk = parseInt(e.target.value);
+                document.getElementById('risk-display').innerText = risk;
+                const price = (80 + (risk * 1.2)).toFixed(2);
+                document.getElementById('oil-price').innerText = `$${price}`;
+                impactChart.data.datasets[0].data = [price, risk, 100 + (risk * 0.7)];
+                impactChart.update();
+            });
+        };
+    </script>
+</body>
+</html>
