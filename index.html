@@ -64,7 +64,7 @@
             position: relative;
         }
 
-        /* 🔥 フルスクリーン・インフォグラフィック・モーダル */
+        /* フルスクリーン・インフォグラフィック・モーダル */
         #fs-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -112,7 +112,6 @@
         }
         .close-btn:hover { color: white; }
 
-        /* インフォグラフィックUIパーツ */
         .info-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
         .info-icon { width: 16px; height: 16px; border-radius: 50%; }
         .info-title { font-size: 1.8rem; font-weight: bold; margin: 0; }
@@ -125,10 +124,22 @@
             border: 1px solid #373e47;
         }
 
-        .data-row { margin-bottom: 15px; }
-        .data-label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; display: flex; justify-content: space-between; }
-        .bar-bg { background: #2d333b; height: 12px; border-radius: 6px; overflow: hidden; }
+        .data-row { margin-bottom: 20px; }
+        .data-row:last-child { margin-bottom: 0; }
+        .data-label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .bar-bg { background: #2d333b; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
         .bar-fill { height: 100%; width: 0; transition: width 1s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        /* エビデンスのリンクスタイル */
+        .source-link {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .source-link:hover { text-decoration: underline; }
 
         /* シミュレーターUI */
         .price-box {
@@ -195,125 +206,4 @@
         window.onload = function() {
             const EX_RATE = 155;
 
-            // --- インフォグラフィックデータ定義 ---
-            const infoData = {
-                "権力": {
-                    color: "var(--accent)",
-                    desc: "アメリカによる中東の「資源」と「秩序」の支配。自国のルールを他国に強いる国際政治的なアドバンテージを指す。この強引な介入姿勢が対立の引き金となる。",
-                    graphics: [
-                        { label: "アメリカの世界軍事費シェア", val: "39%", width: "39%" },
-                        { label: "対中東外交圧力インデックス", val: "85 / 100", width: "85%" }
-                    ]
-                },
-                "力": {
-                    color: "var(--danger)",
-                    desc: "イランによる防衛的リアクション。世界最悪のチョークポイントである「ホルムズ海峡」という地理的優位性を盾にした、物理的な軍事阻止力および抑止力。",
-                    graphics: [
-                        { label: "ホルムズ海峡の海上封鎖能力", val: "極めて高い", width: "95%" },
-                        { label: "周辺勢力への地政学的抑止力", val: "90 / 100", width: "90%" }
-                    ]
-                },
-                "資源": {
-                    color: "var(--resource)",
-                    desc: "すべての対立の根本にある「石油」。核問題の裏に隠された本質的なエネルギー安保問題であり、これが脅かされると世界経済全体の秩序が崩壊する。",
-                    graphics: [
-                        { label: "日本の中東原油依存度", val: "約 92%", width: "92%" },
-                        { label: "ホルムズ海峡通過石油の世界シェア", val: "約 21%", width: "21%" }
-                    ]
-                }
-            };
-
-            // --- モーダルアニメーション制御 ---
-            const modal = document.getElementById('fs-modal');
-            const showFullScreenInfo = (id) => {
-                const data = infoData[id];
-                document.getElementById('info-dot').style.backgroundColor = data.color;
-                document.getElementById('info-title').innerText = id;
-                document.getElementById('info-title').style.color = data.color;
-                document.getElementById('info-desc').innerText = data.desc;
-
-                // グラフィックの生成
-                const container = document.getElementById('graphic-area');
-                container.innerHTML = '';
-                data.graphics.forEach(g => {
-                    const row = document.createElement('div');
-                    row.className = 'data-row';
-                    row.innerHTML = `
-                        <div class="data-label"><span>${g.label}</span><strong>${g.val}</strong></div>
-                        <div class="bar-bg"><div class="bar-fill" style="background:${data.color}"></div></div>
-                    `;
-                    container.appendChild(row);
-                    // アニメーション遅延
-                    setTimeout(() => {
-                        row.querySelector('.bar-fill').style.width = g.width;
-                    }, 50);
-                });
-
-                modal.classList.add('active');
-            };
-
-            const closeModal = () => modal.classList.remove('active');
-            document.getElementById('modal-close').onclick = closeModal;
-            modal.onclick = (e) => { if(e.target === modal) closeModal(); };
-
-            // --- D3.js ネットワーク描画 ---
-            const nodes = [
-                { id: "資源", color: "var(--resource)" },
-                { id: "力", color: "var(--danger)" },
-                { id: "権力", color: "var(--accent)" }
-            ];
-            const links = [{source:"権力", target:"資源"}, {source:"力", target:"資源"}, {source:"権力", target:"力"}];
-
-            const svg = d3.select("#viz-canvas");
-            const width = document.getElementById('canvas-wrapper').clientWidth;
-            const height = 450;
-
-            const sim = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id).distance(140))
-                .force("charge", d3.forceManyBody().strength(-1200))
-                .force("center", d3.forceCenter(width/2, height/2));
-
-            const link = svg.append("g").selectAll("line").data(links).enter().append("line")
-                .attr("stroke", "#484f58").attr("stroke-width", 2.5);
-
-            const node = svg.append("g").selectAll("circle").data(nodes).enter().append("circle")
-                .attr("r", 45).attr("fill", d => d.color).attr("stroke", "#fff").attr("stroke-width", 2)
-                .style("cursor", "pointer")
-                .on("click", (e, d) => showFullScreenInfo(d.id))
-                .call(d3.drag().on("start", (e,d)=>{ if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
-                    .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
-                    .on("end", (e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
-
-            const label = svg.append("g").selectAll("text").data(nodes).enter().append("text")
-                .attr("class", "node-label").text(d => d.id);
-
-            sim.on("tick", () => {
-                link.attr("x1", d=>d.source.x).attr("y1", d=>d.source.y).attr("x2", d=>d.target.x).attr("y2", d=>d.target.y);
-                node.attr("cx", d=>d.x).attr("cy", d=>d.y);
-                label.attr("x", d=>d.x).attr("y", d=>d.y+6);
-            });
-
-            // --- Chart.js ---
-            const ctx = document.getElementById('impactChart').getContext('2d');
-            const chart = new Chart(ctx, {
-                type: 'bar', indexAxis: 'y',
-                data: { labels: ['価格指数', 'リスク', '国内影響'], datasets: [{ data: [80, 0, 100], backgroundColor: ['#58a6ff', '#f85149', '#3fb950'] }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-
-            document.getElementById('risk-slider').oninput = (e) => {
-                const r = parseInt(e.target.value);
-                const usd = (80 + (r * 1.5)).toFixed(2);
-                const jpy = Math.round(usd * EX_RATE).toLocaleString();
-                
-                document.getElementById('risk-display').innerText = r;
-                document.getElementById('oil-usd').innerText = `$${usd}`;
-                document.getElementById('oil-jpy').innerText = `¥${jpy}`;
-                
-                chart.data.datasets[0].data = [usd, r, 100 + r];
-                chart.update();
-            };
-        };
-    </script>
-</body>
-</html>
+            // --- インフォグラフィック＆
