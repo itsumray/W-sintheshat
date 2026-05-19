@@ -16,12 +16,13 @@
             --resource: #d299ff;
             --text: #c9d1d9;
             --text-dim: #8b949e;
+            --success: #3fb950;
         }
 
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             margin: 0;
             overflow-x: hidden;
         }
@@ -32,6 +33,8 @@
             border-bottom: 1px solid var(--border);
         }
 
+        h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
+
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -40,6 +43,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 30px;
+            box-sizing: border-box;
         }
 
         .card {
@@ -60,102 +64,125 @@
             position: relative;
         }
 
-        /* ほわんと出るモーダルの設定 */
-        #modal {
+        /* 🔥 フルスクリーン・インフォグラフィック・モーダル */
+        #fs-modal {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            width: 320px;
-            padding: 30px;
-            background: rgba(22, 27, 34, 0.95);
-            border: 1px solid var(--accent);
-            border-radius: 20px; /* 角がとれてる四角 */
-            box-shadow: 0 0 30px rgba(88, 166, 255, 0.3);
-            backdrop-filter: blur(10px);
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-            text-align: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
         }
 
-        #modal.active {
+        #fs-modal.active {
             opacity: 1;
             visibility: visible;
-            transform: translate(-50%, -50%) scale(1);
         }
 
-        #modal h2 { margin-top: 0; color: var(--accent); }
-        #modal-close {
-            margin-top: 20px;
-            padding: 8px 20px;
-            background: var(--accent);
-            border: none;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
+        .modal-content {
+            background: #1c2128;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 650px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            transform: translateY(40px) scale(0.95);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            box-sizing: border-box;
         }
 
-        #overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 90;
-            display: none;
+        #fs-modal.active .modal-content {
+            transform: translateY(0) scale(1);
         }
 
+        .close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: none; border: none;
+            color: var(--text-dim); font-size: 24px; cursor: pointer;
+            transition: color 0.2s;
+        }
+        .close-btn:hover { color: white; }
+
+        /* インフォグラフィックUIパーツ */
+        .info-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .info-icon { width: 16px; height: 16px; border-radius: 50%; }
+        .info-title { font-size: 1.8rem; font-weight: bold; margin: 0; }
+        .info-desc { font-size: 1.05rem; line-height: 1.6; color: #adbac7; margin-bottom: 30px; }
+        
+        .graphic-container {
+            background: #22272e;
+            border-radius: 14px;
+            padding: 20px;
+            border: 1px solid #373e47;
+        }
+
+        .data-row { margin-bottom: 15px; }
+        .data-label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .bar-bg { background: #2d333b; height: 12px; border-radius: 6px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 0; transition: width 1s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* シミュレーターUI */
         .price-box {
             background: #0d1117;
             padding: 20px;
             border-radius: 12px;
             margin: 20px 0;
+            text-align: center;
         }
-
-        .jpy-price {
-            display: block;
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #3fb950;
-            margin-top: 5px;
-        }
-
+        .jpy-price { display: block; font-size: 2rem; font-weight: bold; color: var(--success); margin-top: 5px; }
         .usd-price { color: var(--text-dim); font-size: 1rem; }
-
         input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .node-label { fill: #fff; font-size: 15px; font-weight: bold; pointer-events: none; text-anchor: middle; }
     </style>
 </head>
 <body>
 
-    <div id="overlay"></div>
-    <div id="modal">
-        <h2 id="modal-title">TITLE</h2>
-        <p id="modal-body">Description text goes here.</p>
-        <button id="modal-close">閉じる</button>
+    <div id="fs-modal">
+        <div class="modal-content">
+            <button class="close-btn" id="modal-close">×</button>
+            <div class="info-header">
+                <div class="info-icon" id="info-dot"></div>
+                <h2 class="info-title" id="info-title">要素名</h2>
+            </div>
+            <p class="info-desc" id="info-desc">説明文</p>
+            
+            <div class="graphic-container" id="graphic-area">
+                </div>
+        </div>
     </div>
 
     <header>
         <h1>Geopolitical Risk Analysis</h1>
+        <p style="color: var(--text-dim); margin: 5px 0 0 0;">UNIT1: 権力・力・資源の構造動態</p>
     </header>
 
     <main class="container">
         <div class="card viz-card">
-            <h3>因果構造：権力・力・資源</h3>
+            <h3>因果構造：三すくみの関係</h3>
             <div id="canvas-wrapper">
                 <svg id="viz-canvas" width="100%" height="100%"></svg>
             </div>
-            <p style="font-size: 0.8rem; color: var(--accent); text-align: center;">各要素をクリックして詳細を表示</p>
+            <p style="font-size: 0.85rem; color: var(--accent); text-align: center; margin-top: 15px;">要素をクリックするとフルスクリーンでデータを展開</p>
         </div>
 
         <div class="card control-card">
-            <h3>Simulation</h3>
-            <label>緊張度: <span id="risk-display">0</span>%</label>
+            <h3>Hormuz Simulation</h3>
+            <label>地政学的緊張度: <span id="risk-display">0</span>%</label>
             <input type="range" id="risk-slider" value="0" min="0" max="100">
             
             <div class="price-box">
                 <span class="usd-price">予測価格 (USD): <span id="oil-usd">$80.00</span></span>
                 <span class="jpy-price" id="oil-jpy">¥12,400</span>
-                <small style="color: var(--text-dim);">※1ドル=155円で計算</small>
+                <small style="color: var(--text-dim);">※1ドル=155円換算</small>
             </div>
 
             <div style="height: 200px;">
@@ -166,29 +193,74 @@
 
     <script>
         window.onload = function() {
-            const EX_RATE = 155; // 為替レート設定
+            const EX_RATE = 155;
 
-            // --- モーダル制御 ---
-            const modal = document.getElementById('modal');
-            const overlay = document.getElementById('overlay');
-            const showModal = (title, body) => {
-                document.getElementById('modal-title').innerText = title;
-                document.getElementById('modal-body').innerText = body;
+            // --- インフォグラフィックデータ定義 ---
+            const infoData = {
+                "権力": {
+                    color: "var(--accent)",
+                    desc: "アメリカによる中東の「資源」と「秩序」の支配。自国のルールを他国に強いる国際政治的なアドバンテージを指す。この強引な介入姿勢が対立の引き金となる。",
+                    graphics: [
+                        { label: "アメリカの世界軍事費シェア", val: "39%", width: "39%" },
+                        { label: "対中東外交圧力インデックス", val: "85 / 100", width: "85%" }
+                    ]
+                },
+                "力": {
+                    color: "var(--danger)",
+                    desc: "イランによる防衛的リアクション。世界最悪のチョークポイントである「ホルムズ海峡」という地理的優位性を盾にした、物理的な軍事阻止力および抑止力。",
+                    graphics: [
+                        { label: "ホルムズ海峡の海上封鎖能力", val: "極めて高い", width: "95%" },
+                        { label: "周辺勢力への地政学的抑止力", val: "90 / 100", width: "90%" }
+                    ]
+                },
+                "資源": {
+                    color: "var(--resource)",
+                    desc: "すべての対立の根本にある「石油」。核問題の裏に隠された本質的なエネルギー安保問題であり、これが脅かされると世界経済全体の秩序が崩壊する。",
+                    graphics: [
+                        { label: "日本の中東原油依存度", val: "約 92%", width: "92%" },
+                        { label: "ホルムズ海峡通過石油の世界シェア", val: "約 21%", width: "21%" }
+                    ]
+                }
+            };
+
+            // --- モーダルアニメーション制御 ---
+            const modal = document.getElementById('fs-modal');
+            const showFullScreenInfo = (id) => {
+                const data = infoData[id];
+                document.getElementById('info-dot').style.backgroundColor = data.color;
+                document.getElementById('info-title').innerText = id;
+                document.getElementById('info-title').style.color = data.color;
+                document.getElementById('info-desc').innerText = data.desc;
+
+                // グラフィックの生成
+                const container = document.getElementById('graphic-area');
+                container.innerHTML = '';
+                data.graphics.forEach(g => {
+                    const row = document.createElement('div');
+                    row.className = 'data-row';
+                    row.innerHTML = `
+                        <div class="data-label"><span>${g.label}</span><strong>${g.val}</strong></div>
+                        <div class="bar-bg"><div class="bar-fill" style="background:${data.color}"></div></div>
+                    `;
+                    container.appendChild(row);
+                    // アニメーション遅延
+                    setTimeout(() => {
+                        row.querySelector('.bar-fill').style.width = g.width;
+                    }, 50);
+                });
+
                 modal.classList.add('active');
-                overlay.style.display = 'block';
             };
-            const closeModal = () => {
-                modal.classList.remove('active');
-                overlay.style.display = 'none';
-            };
-            document.getElementById('modal-close').onclick = closeModal;
-            overlay.onclick = closeModal;
 
-            // --- D3.js ---
+            const closeModal = () => modal.classList.remove('active');
+            document.getElementById('modal-close').onclick = closeModal;
+            modal.onclick = (e) => { if(e.target === modal) closeModal(); };
+
+            // --- D3.js ネットワーク描画 ---
             const nodes = [
-                { id: "権力", color: "#58a6ff", info: "アメリカの国際秩序支配。資源を自国のルールで管理しようとする「権力」の行使。" },
-                { id: "力", color: "#f85149", info: "イランの軍事・地理的防衛。ホルムズ海峡という急所を抑える物理的な「力」。" },
-                { id: "資源", color: "#d299ff", info: "石油。すべての対立の根源であり、現代社会を動かすエネルギーの源。" }
+                { id: "資源", color: "var(--resource)" },
+                { id: "力", color: "var(--danger)" },
+                { id: "権力", color: "var(--accent)" }
             ];
             const links = [{source:"権力", target:"資源"}, {source:"力", target:"資源"}, {source:"権力", target:"力"}];
 
@@ -197,35 +269,35 @@
             const height = 450;
 
             const sim = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id).distance(150))
-                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("link", d3.forceLink(links).id(d => d.id).distance(140))
+                .force("charge", d3.forceManyBody().strength(-1200))
                 .force("center", d3.forceCenter(width/2, height/2));
 
             const link = svg.append("g").selectAll("line").data(links).enter().append("line")
-                .attr("stroke", "#484f58").attr("stroke-width", 2);
+                .attr("stroke", "#484f58").attr("stroke-width", 2.5);
 
             const node = svg.append("g").selectAll("circle").data(nodes).enter().append("circle")
                 .attr("r", 45).attr("fill", d => d.color).attr("stroke", "#fff").attr("stroke-width", 2)
                 .style("cursor", "pointer")
-                .on("click", (e, d) => showModal(d.id, d.info))
+                .on("click", (e, d) => showFullScreenInfo(d.id))
                 .call(d3.drag().on("start", (e,d)=>{ if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
                     .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
                     .on("end", (e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
 
             const label = svg.append("g").selectAll("text").data(nodes).enter().append("text")
-                .attr("class", "node-label").attr("fill", "#fff").attr("text-anchor", "middle").text(d => d.id);
+                .attr("class", "node-label").text(d => d.id);
 
             sim.on("tick", () => {
                 link.attr("x1", d=>d.source.x).attr("y1", d=>d.source.y).attr("x2", d=>d.target.x).attr("y2", d=>d.target.y);
                 node.attr("cx", d=>d.x).attr("cy", d=>d.y);
-                label.attr("x", d=>d.x).attr("y", d=>d.y+5);
+                label.attr("x", d=>d.x).attr("y", d=>d.y+6);
             });
 
-            // --- Chart & Logic ---
+            // --- Chart.js ---
             const ctx = document.getElementById('impactChart').getContext('2d');
             const chart = new Chart(ctx, {
                 type: 'bar', indexAxis: 'y',
-                data: { labels: ['価格', 'リスク', '影響'], datasets: [{ data: [80, 0, 100], backgroundColor: ['#58a6ff', '#f85149', '#3fb950'] }] },
+                data: { labels: ['価格指数', 'リスク', '国内影響'], datasets: [{ data: [80, 0, 100], backgroundColor: ['#58a6ff', '#f85149', '#3fb950'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
 
