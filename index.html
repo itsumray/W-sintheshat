@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Action Plan: Geopolitics Visualization</title>
-    <!-- ライブラリ読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -22,23 +21,16 @@
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            font-family: -apple-system, sans-serif;
             margin: 0;
-            line-height: 1.5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            overflow-x: hidden;
         }
 
         header {
             text-align: center;
             padding: 30px 20px;
-            width: 100%;
             border-bottom: 1px solid var(--border);
         }
-
-        h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
-        .sub { color: var(--text-dim); margin-top: 5px; }
 
         .container {
             display: flex;
@@ -46,9 +38,8 @@
             justify-content: center;
             gap: 20px;
             max-width: 1200px;
-            width: 100%;
+            margin: 0 auto;
             padding: 30px;
-            box-sizing: border-box;
         }
 
         .card {
@@ -57,7 +48,6 @@
             border-radius: 12px;
             padding: 24px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            box-sizing: border-box;
         }
 
         .viz-card { flex: 1 1 600px; min-width: 300px; }
@@ -66,184 +56,191 @@
         #canvas-wrapper {
             background: #05070a;
             border-radius: 8px;
-            margin-top: 15px;
             height: 450px;
             position: relative;
-            overflow: hidden;
         }
 
-        #node-info {
-            margin-top: 15px;
-            padding: 12px;
-            background: #0d1117;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            color: var(--accent);
-            min-height: 3em;
+        /* ほわんと出るモーダルの設定 */
+        #modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            width: 320px;
+            padding: 30px;
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid var(--accent);
+            border-radius: 20px; /* 角がとれてる四角 */
+            box-shadow: 0 0 30px rgba(88, 166, 255, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            text-align: center;
         }
 
-        .slider-container { margin: 20px 0; }
-        input[type=range] { width: 100%; margin-top: 10px; cursor: pointer; }
+        #modal.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #modal h2 { margin-top: 0; color: var(--accent); }
+        #modal-close {
+            margin-top: 20px;
+            padding: 8px 20px;
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 90;
+            display: none;
+        }
 
         .price-box {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             background: #0d1117;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
         }
 
-        .price-box #oil-price {
-            font-size: 1.5rem;
+        .jpy-price {
+            display: block;
+            font-size: 1.8rem;
             font-weight: bold;
-            color: var(--resource);
+            color: #3fb950;
+            margin-top: 5px;
         }
 
-        .node-label { fill: #fff; font-size: 14px; font-weight: bold; pointer-events: none; text-anchor: middle; }
-        .link { stroke: #484f58; stroke-width: 2; }
+        .usd-price { color: var(--text-dim); font-size: 1rem; }
+
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
     </style>
 </head>
 <body>
 
+    <div id="overlay"></div>
+    <div id="modal">
+        <h2 id="modal-title">TITLE</h2>
+        <p id="modal-body">Description text goes here.</p>
+        <button id="modal-close">閉じる</button>
+    </div>
+
     <header>
         <h1>Geopolitical Risk Analysis</h1>
-        <p class="sub">UNIT1: 権力・力・資源による国際問題の可視化</p>
     </header>
 
     <main class="container">
-        <!-- 1. D3.js Network -->
         <div class="card viz-card">
-            <h3>因果構造：権力・力・資源の動態</h3>
+            <h3>因果構造：権力・力・資源</h3>
             <div id="canvas-wrapper">
                 <svg id="viz-canvas" width="100%" height="100%"></svg>
             </div>
-            <div id="node-info">ノードをドラッグ、またはホバーして詳細を確認</div>
+            <p style="font-size: 0.8rem; color: var(--accent); text-align: center;">各要素をクリックして詳細を表示</p>
         </div>
 
-        <!-- 2. Simulation Control -->
         <div class="card control-card">
-            <h3>Hormuz Simulation</h3>
-            <div class="slider-container">
-                <label for="risk-slider">地政学的緊張度: <span id="risk-display">10</span>%</label>
-                <input type="range" id="risk-slider" value="10" min="0" max="100">
-            </div>
+            <h3>Simulation</h3>
+            <label>緊張度: <span id="risk-display">0</span>%</label>
+            <input type="range" id="risk-slider" value="0" min="0" max="100">
             
             <div class="price-box">
-                <span>予測原油価格 (WTI):</span>
-                <span id="oil-price">$80.00</span>
+                <span class="usd-price">予測価格 (USD): <span id="oil-usd">$80.00</span></span>
+                <span class="jpy-price" id="oil-jpy">¥12,400</span>
+                <small style="color: var(--text-dim);">※1ドル=155円で計算</small>
             </div>
 
-            <div class="chart-wrapper" style="height: 250px;">
+            <div style="height: 200px;">
                 <canvas id="impactChart"></canvas>
             </div>
-
-            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 20px;">
-                Sources: EIA Data, Unit 1 Action Plan Research.
-            </p>
         </div>
     </main>
 
     <script>
         window.onload = function() {
-            // --- D3.js Logic ---
-            const nodes = [
-                { id: "権力 (Authority)", color: "#58a6ff", info: "アメリカによる国際秩序の支配と他国への政治的圧力。" },
-                { id: "力 (Force)", color: "#f85149", info: "イランによるホルムズ海峡封鎖などの物理的な軍事・防御力。" },
-                { id: "資源 (Resources)", color: "#d299ff", info: "石油・エネルギー。国家が「権力」と「力」を行使する根本理由。" }
-            ];
+            const EX_RATE = 155; // 為替レート設定
 
-            const links = [
-                { source: "権力 (Authority)", target: "資源 (Resources)" },
-                { source: "力 (Force)", target: "資源 (Resources)" },
-                { source: "権力 (Authority)", target: "力 (Force)" }
+            // --- モーダル制御 ---
+            const modal = document.getElementById('modal');
+            const overlay = document.getElementById('overlay');
+            const showModal = (title, body) => {
+                document.getElementById('modal-title').innerText = title;
+                document.getElementById('modal-body').innerText = body;
+                modal.classList.add('active');
+                overlay.style.display = 'block';
+            };
+            const closeModal = () => {
+                modal.classList.remove('active');
+                overlay.style.display = 'none';
+            };
+            document.getElementById('modal-close').onclick = closeModal;
+            overlay.onclick = closeModal;
+
+            // --- D3.js ---
+            const nodes = [
+                { id: "権力", color: "#58a6ff", info: "アメリカの国際秩序支配。資源を自国のルールで管理しようとする「権力」の行使。" },
+                { id: "力", color: "#f85149", info: "イランの軍事・地理的防衛。ホルムズ海峡という急所を抑える物理的な「力」。" },
+                { id: "資源", color: "#d299ff", info: "石油。すべての対立の根源であり、現代社会を動かすエネルギーの源。" }
             ];
+            const links = [{source:"権力", target:"資源"}, {source:"力", target:"資源"}, {source:"権力", target:"力"}];
 
             const svg = d3.select("#viz-canvas");
-            const wrapper = document.getElementById('canvas-wrapper');
-            const width = wrapper.clientWidth;
+            const width = document.getElementById('canvas-wrapper').clientWidth;
             const height = 450;
 
-            const simulation = d3.forceSimulation(nodes)
+            const sim = d3.forceSimulation(nodes)
                 .force("link", d3.forceLink(links).id(d => d.id).distance(150))
                 .force("charge", d3.forceManyBody().strength(-1000))
-                .force("center", d3.forceCenter(width / 2, height / 2));
+                .force("center", d3.forceCenter(width/2, height/2));
 
-            const link = svg.append("g")
-                .selectAll("line")
-                .data(links)
-                .enter().append("line")
-                .attr("class", "link");
+            const link = svg.append("g").selectAll("line").data(links).enter().append("line")
+                .attr("stroke", "#484f58").attr("stroke-width", 2);
 
-            const node = svg.append("g")
-                .selectAll("circle")
-                .data(nodes)
-                .enter().append("circle")
-                .attr("r", 40)
-                .attr("fill", d => d.color)
-                .attr("stroke", "#fff")
-                .attr("stroke-width", 2)
-                .call(d3.drag()
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended))
-                .on("mouseover", (e, d) => { document.getElementById('node-info').innerText = d.info; })
-                .on("mouseout", () => { document.getElementById('node-info').innerText = "ノードをドラッグ、またはホバーして詳細を確認"; });
+            const node = svg.append("g").selectAll("circle").data(nodes).enter().append("circle")
+                .attr("r", 45).attr("fill", d => d.color).attr("stroke", "#fff").attr("stroke-width", 2)
+                .style("cursor", "pointer")
+                .on("click", (e, d) => showModal(d.id, d.info))
+                .call(d3.drag().on("start", (e,d)=>{ if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+                    .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
+                    .on("end", (e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
 
-            const label = svg.append("g")
-                .selectAll("text")
-                .data(nodes)
-                .enter().append("text")
-                .attr("class", "node-label")
-                .text(d => d.id.split(' ')[0]);
+            const label = svg.append("g").selectAll("text").data(nodes).enter().append("text")
+                .attr("class", "node-label").attr("fill", "#fff").attr("text-anchor", "middle").text(d => d.id);
 
-            simulation.on("tick", () => {
-                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                node.attr("cx", d => d.x).attr("cy", d => d.y);
-                label.attr("x", d => d.x).attr("y", d => d.y + 5);
+            sim.on("tick", () => {
+                link.attr("x1", d=>d.source.x).attr("y1", d=>d.source.y).attr("x2", d=>d.target.x).attr("y2", d=>d.target.y);
+                node.attr("cx", d=>d.x).attr("cy", d=>d.y);
+                label.attr("x", d=>d.x).attr("y", d=>d.y+5);
             });
 
-            function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x; d.fy = d.y;
-            }
-            function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
-            function dragended(event, d) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null; d.fy = null;
-            }
-
-            // --- Chart.js Logic ---
+            // --- Chart & Logic ---
             const ctx = document.getElementById('impactChart').getContext('2d');
-            const impactChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['原油価格 ($)', 'リスク (%)', 'ガソリン指数'],
-                    datasets: [{
-                        data: [80, 10, 100],
-                        backgroundColor: ['#58a6ff', '#f85149', '#3fb950']
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { beginAtZero: true, grid: { color: '#30363d' } } }
-                }
+            const chart = new Chart(ctx, {
+                type: 'bar', indexAxis: 'y',
+                data: { labels: ['価格', 'リスク', '影響'], datasets: [{ data: [80, 0, 100], backgroundColor: ['#58a6ff', '#f85149', '#3fb950'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
 
-            const slider = document.getElementById('risk-slider');
-            slider.addEventListener('input', (e) => {
-                const risk = parseInt(e.target.value);
-                document.getElementById('risk-display').innerText = risk;
-                const price = (80 + (risk * 1.2)).toFixed(2);
-                document.getElementById('oil-price').innerText = `$${price}`;
-                impactChart.data.datasets[0].data = [price, risk, 100 + (risk * 0.7)];
-                impactChart.update();
-            });
+            document.getElementById('risk-slider').oninput = (e) => {
+                const r = parseInt(e.target.value);
+                const usd = (80 + (r * 1.5)).toFixed(2);
+                const jpy = Math.round(usd * EX_RATE).toLocaleString();
+                
+                document.getElementById('risk-display').innerText = r;
+                document.getElementById('oil-usd').innerText = `$${usd}`;
+                document.getElementById('oil-jpy').innerText = `¥${jpy}`;
+                
+                chart.data.datasets[0].data = [usd, r, 100 + r];
+                chart.update();
+            };
         };
     </script>
 </body>
